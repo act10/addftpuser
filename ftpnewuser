@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# action@ lazy script for add ftp user
+# 2021
+
+# get params from command line
+USERNAME=$1
+PASSWORD=$2
+DISKCHOOSE=$3
+
+#set array disks
+DISKS="sdc1 sdb1"
+
+#set character available in random password
+CHARS="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
+LENGTH="10"
+
+
+usage() {
+  cat <<EOF
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [USERNAME] [PASSWORD] [DISK] 
+
+Simple script for adding user for ftp use
+
+...
+EOF
+  exit
+}
+
+
+MENU_DISK=
+
+for i in ${DISKS[*]} 
+do
+	MENU_DISK+="$i `df -h /dev/$i |awk '{print $4}'|tail -1` off "
+done
+
+while [ -z $USERNAME ]; 
+do
+	USERNAME=$(whiptail --title "Add user" --inputbox "Name" 10 30 3>&2 2>&1 1>&3)
+done
+
+while [ -z $PASSWORD ];
+do 
+	if [ -z "$2" ] ; then
+	        while [ "${n:=1}" -le "$LENGTH" ] ; 
+		do
+                        RANDOMPASSWORD="$RANDOMPASSWORD${CHARS:$(($RANDOM%${#CHARS})):1}"
+               		let n+=1
+               	done
+	fi
+
+	PASSWORD=$(whiptail --title "Choose password" --passwordbox "Password" 10 30 $RANDOMPASSWORD 3>&2 2>&1 1>&3)
+done
+
+
+
+while [ -z $DISKCHOOSE ]; 
+	do
+		DISKCHOOSE=$( whiptail --title "choose disk for home user" \
+			--radiolist "disk" 10 30 2 $MENU_DISK 3>&2 2>&1 1>&3 )
+done
+
+/usr/sbin/useradd $USERNAME -b /mnt/$DISKCHOOSE/ftp -k /opt/empty -m -s /usr/sbin/nologin -p $PASSWORD && \
+echo  $USERNAME:$PASSWORD|chpasswd && \
+(echo -e "\n\nUser created \n************************************************** \n"; \
+echo "User name: $USERNAME"; \
+echo "Password:  $PASSWORD";  \
+echo -e "Home dir: /mnt/$DISKCHOOSE/ftp/$USERNAME";\
+echo -e "\n************************************************** \n")
+ 
